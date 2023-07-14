@@ -8,14 +8,14 @@ namespace HR_Management.Services
     {
         private readonly DataContext _context;
         public IConfiguration _config;
-        ///private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IFileService _fileService;
 
         public DBServices(DataContext context, IConfiguration configuration, IHttpContextAccessor httpContextAccessor, IFileService fileService)
         {
             _context = context;
             _config = configuration;
-            //_httpContextAccessor = httpContextAccessor;
+            _httpContextAccessor = httpContextAccessor;
             _fileService = fileService;
         }
 
@@ -34,17 +34,18 @@ namespace HR_Management.Services
 
 
         //Create Token for authentication
-        public string CreateToken(UserLogin user)
+        public string CreateToken(string email, string Id)
         {
             List<Claim> claims = new List<Claim>()
             {
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.NameIdentifier, Id)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _config.GetSection("JwtConfig:Secret").Value!));
 
-            var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
 
             var token = new JwtSecurityToken(
                  _config["JwtConfig:Issuer"],
@@ -55,6 +56,16 @@ namespace HR_Management.Services
                 );
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+
+            _httpContextAccessor?.HttpContext?.Response.Cookies.Append("token", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTime.UtcNow.AddSeconds(3000),
+                Secure = true,
+                IsEssential = true,
+                SameSite = SameSiteMode.None
+
+            });
             return jwt;
         }
 
@@ -66,19 +77,70 @@ namespace HR_Management.Services
             {
                 throw new Exception("User Already Exists");
             }
-            
+            var id = Guid.NewGuid();
             EmployeeModel dbTable = new()
             {
+                Id = id,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
+                OtherName = user.OtherName,
                 Email = user.Email,
                 Nationality = user.Nationality,
                 DateOfBirth = user.DateOfBirth,
-                CreatedOn = DateTime.UtcNow
+                Gender = user.Gender,
+                PhoneNumber = user.PhoneNumber,
+                Address = user.Address,
+                PasswordHash = CreatePasswordhash(user.Password),
+                MaritalStatus = user.MaritalStatus,
+                Region = user.Region,
+                SpecialNeed= user.SpecialNeed,
+                Status= user.Status,
+                DeptId= user.DeptId,
+                RoleId= user.RoleId,
+                ManagerId= user.ManagerId,
+                IsDeleted= false,
+                AddedOn =  DateTime.UtcNow                         
+
             };
-            await _users.InsertOneAsync(dbTable);
+             _context.Employees.Add(dbTable);
+            _context.SaveChanges();
 
         }
+
+        public async Task<object> Login(UserLogin user)
+        {
+            var dbUser= await _context.Employees.FirstOrDefaultAsync(e=>e.Email== user.Email);
+
+            if (dbUser == null)
+            {
+                throw new Exception("Email or Password is Incorrect");
+            }
+
+            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(user.Password, dbUser.PasswordHash);
+            if (!isPasswordValid)
+            {
+                throw new Exception("Email or Password is Incorrect");
+            }
+
+            string token = CreateToken(dbUser.Email, dbUser.Id.ToString());
+
+            return new TokenResponse
+            {
+                Email = dbUser.Email,
+                FullName = dbUser.GetFullName(),
+                PhoneNumber = dbUser.PhoneNumber,
+                DateOfBirth = dbUser.DateOfBirth
+
+            };
+        }
+
+
+        //get all employees
+        public async Task<List<EmployeeModel>> GetAllEmp()=>   await _context.Employees.Where(a => a.IsDeleted == false).ToListAsync();
+
+
+        public async Task<EmployeeModel> GetUser(string email) => await _context.Employees.FirstOrDefaultAsync(e => e.Email == email);         
+
 
 
         //create new role
@@ -168,5 +230,7 @@ namespace HR_Management.Services
             }
             return false;
         }
+
+        
     }
 }

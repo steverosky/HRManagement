@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace HR_Management.Models.RequestModels
 {
@@ -6,5 +7,7 @@ namespace HR_Management.Models.RequestModels
     {
         [EmailAddress]
         public required string Email { get; set; }
+        [PasswordPropertyText]
+        public required string Password { get; set; }
     }
 }

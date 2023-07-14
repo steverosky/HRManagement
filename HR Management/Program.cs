@@ -36,6 +36,10 @@ builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
+.AddCookie(options =>
+{
+    options.Cookie.Name = "token";
+})
 .AddJwtBearer(jwt =>
 {
     var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtConfig:Secret"]!);
@@ -53,6 +57,15 @@ builder.Services.AddAuthentication(options =>
 
     };
 
+    jwt.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            context.Token = context.Request.Cookies["token"];
+            return Task.CompletedTask;
+        }
+    };
+
 });
 
 builder.Services.AddScoped<IDBServices, DBServices>();
@@ -60,7 +73,7 @@ builder.Services.AddTransient<IFileService, FileService>();
 
 //AutoMapper
 builder.Services.AddAutoMapper(typeof(Program));
-builder.Services.AddControllersWithViews();
+//builder.Services.AddControllersWithViews();
 
 // setup serilog
 builder.Host.UseSerilog((context, configuration) =>
@@ -78,11 +91,13 @@ builder.Services.AddSwaggerGen(options =>
     options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
-        Name= "Authorization",
-        Type= SecuritySchemeType.ApiKey
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
     });
     options.OperationFilter<SecurityRequirementsOperationFilter>();
 });
+
+//builder.Services
 
 var app = builder.Build();
 

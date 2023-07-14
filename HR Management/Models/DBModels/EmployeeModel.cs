@@ -17,6 +17,8 @@ namespace HR_Management.Models.DBModels
         [Required]
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
+        public string PasswordHash{ get; set; } = string.Empty;
+        public long PhoneNumber { get; set; } 
         public string Region { get; set; } = string.Empty;
         public string Nationality { get; set; } = string.Empty;
         public Address? Address { get; set; }
@@ -27,10 +29,11 @@ namespace HR_Management.Models.DBModels
         public int RoleId { get; set; }
         public int ManagerId { get; set; }
         public bool IsDeleted { get; set; } = false;
+        public DateTime AddedOn { get; set; }
 
         public string GetFullName()
         {
-            return $"{this.LastName}, {this.FirstName}";
+            return $"{this.LastName} {this.FirstName}";
         }
     }
 
