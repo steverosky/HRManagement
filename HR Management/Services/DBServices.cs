@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq.Expressions;
 using System.Security.Claims;
 
 namespace HR_Management.Services
@@ -69,47 +70,87 @@ namespace HR_Management.Services
             return jwt;
         }
 
-        public async Task AddUser(AddEmployeeModel user)
+        public async Task AddEmployee(AddEmployeeModel user)
         {
-            //check if email exists
-            var IsEmail = await _context.Employees.FirstOrDefaultAsync(p => p.Email == user.Email);
-            if (IsEmail is not null)
+            try
             {
-                throw new Exception("User Already Exists");
-            }
-            var id = Guid.NewGuid();
-            EmployeeModel dbTable = new()
-            {
-                Id = id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                OtherName = user.OtherName,
-                Email = user.Email,
-                Nationality = user.Nationality,
-                DateOfBirth = user.DateOfBirth,
-                Gender = user.Gender,
-                PhoneNumber = user.PhoneNumber,
-                Address = user.Address,
-                PasswordHash = CreatePasswordhash(user.Password),
-                MaritalStatus = user.MaritalStatus,
-                Region = user.Region,
-                SpecialNeed= user.SpecialNeed,
-                Status= user.Status,
-                DeptId= user.DeptId,
-                RoleId= user.RoleId,
-                ManagerId= user.ManagerId,
-                IsDeleted= false,
-                AddedOn =  DateTime.UtcNow                         
+                //check if email exists
+                var IsEmail = await _context.Employees.FirstOrDefaultAsync(p => p.Email == user.Email);
+                if (IsEmail is not null)
+                {
+                    throw new Exception("Employee Already Exists");
+                }
+                var id = Guid.NewGuid();
+                EmployeeModel dbTable = new()
+                {
+                    Id = id,
+                    StaffId = user.StaffId,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    OtherName = user.OtherName,
+                    Email = user.Email,
+                    Nationality = user.Nationality,
+                    DateOfBirth = user.DateOfBirth,
+                    Gender = user.Gender,
+                    PhoneNumber = user.PhoneNumber,
+                    Address = user.Address,
+                    PasswordHash = CreatePasswordhash(user.Password),
+                    MaritalStatus = user.MaritalStatus,
+                    Region = user.Region,
+                    SpecialNeed = user.SpecialNeed,
+                    Status = user.Status,
+                    DeptId = user.DeptId,
+                    RoleId = user.RoleId,
+                    ManagerId = user.ManagerId,
+                    IsDeleted = false,
+                    AddedOn = DateTime.UtcNow
 
-            };
-             _context.Employees.Add(dbTable);
-            _context.SaveChanges();
+                };
+                _context.Employees.Add(dbTable);
+                _context.SaveChanges();
+            }
+            catch(Exception ex)
+            {
+                throw new Exception( ex.Message);
+            }
 
         }
 
+
+        public async Task AddUser(UserLogin user)
+        {
+            try
+            {
+                //check if email exists
+                var IsEmail = await _context.Users.FirstOrDefaultAsync(p => p.Email == user.Email);
+                if (IsEmail is not null)
+                {
+                    throw new Exception("User Already Exists");
+                }
+                var id = Guid.NewGuid();
+                Users dbTable = new()
+                {
+                    Id = id,
+                    Email = user.Email,
+                    PasswordHash = CreatePasswordhash(user.Password),
+                    AddedOn = DateTime.UtcNow,
+                    IsDeleted = false
+
+                };
+                _context.Users.Add(dbTable);
+                _context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+
+        }
+
+
         public async Task<object> Login(UserLogin user)
         {
-            var dbUser= await _context.Employees.FirstOrDefaultAsync(e=>e.Email== user.Email);
+            var dbUser = await _context.Users.FirstOrDefaultAsync(e => e.Email == user.Email && e.IsDeleted == false);
 
             if (dbUser == null)
             {
@@ -126,22 +167,43 @@ namespace HR_Management.Services
 
             return new TokenResponse
             {
-                Email = dbUser.Email,
-                FullName = dbUser.GetFullName(),
-                PhoneNumber = dbUser.PhoneNumber,
-                DateOfBirth = dbUser.DateOfBirth
+                Email = dbUser.Email
 
             };
         }
 
 
         //get all employees
-        public async Task<List<EmployeeModel>> GetAllEmp()=>   await _context.Employees.Where(a => a.IsDeleted == false).ToListAsync();
+        public async Task<List<EmployeeModel>> GetAllEmp() => await _context.Employees.Where(a => a.IsDeleted == false).ToListAsync();
+
+        //Get employee by email
+        public async Task<EmployeeModel> GetEmployee(string email)
+        {
+             var emp = await _context.Employees.Where(e => e.Email == email && e.IsDeleted == false).FirstOrDefaultAsync();
+
+            if (emp is null)
+                throw new Exception("Employee not found");
+
+            return emp;
+            
+        }
 
 
-        public async Task<EmployeeModel> GetUser(string email) => await _context.Employees.FirstOrDefaultAsync(e => e.Email == email);         
+        //get all Users
+        public async Task<List<Users>> GetAllUsers() => await _context.Users.Where(a => a.IsDeleted == false).ToListAsync();
+
+        //Get user by email
+        public async Task<Users> GetUser(string email)
+        {
+            var emp = await _context.Users.Where(e => e.Email == email && e.IsDeleted == false ).FirstOrDefaultAsync();
+
+            if (emp is null)
+                throw new Exception("Employee not found");
+
+            return emp;
 
 
+        }
 
         //create new role
         public async Task<RoleModel> CreateRole(AddRoleModel role)
@@ -231,6 +293,6 @@ namespace HR_Management.Services
             return false;
         }
 
-        
+
     }
 }

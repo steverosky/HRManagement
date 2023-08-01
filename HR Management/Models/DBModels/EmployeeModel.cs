@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Net;
 
 namespace HR_Management.Models.DBModels
 {
+    [Table("Employees", Schema = "dbo")]
     public class EmployeeModel
     {
         [Key, Required]
@@ -18,7 +20,7 @@ namespace HR_Management.Models.DBModels
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
         public string PasswordHash{ get; set; } = string.Empty;
-        public long PhoneNumber { get; set; } 
+        public string PhoneNumber { get; set; } = string.Empty;
         public string Region { get; set; } = string.Empty;
         public string Nationality { get; set; } = string.Empty;
         public Address? Address { get; set; }
@@ -39,7 +41,7 @@ namespace HR_Management.Models.DBModels
 
     public class Address
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         public string Door { get; set; } = string.Empty;
         public string Street1 { get; set; } = string.Empty;
         public string Street2 { get; set; } = string.Empty;

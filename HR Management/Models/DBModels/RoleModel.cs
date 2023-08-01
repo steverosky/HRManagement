@@ -1,5 +1,8 @@
-﻿namespace HR_Management.Models.DBModels
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace HR_Management.Models.DBModels
 {
+    [Table("Roles", Schema = "dbo")]
     public class RoleModel
     {
         public Guid Id { get; set; }

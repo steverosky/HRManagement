@@ -9,7 +9,12 @@ namespace HR_Management.Services
         public Task<RoleModel> CreateRole(AddRoleModel role);
         public Task<List<EmployeeModel>> GetAllEmp();
         public Task<object> Login(UserLogin user);
-        public  Task AddUser(AddEmployeeModel user);
-        public Task<EmployeeModel> GetUser(string email);
+        public  Task AddEmployee(AddEmployeeModel user);
+        public Task AddUser(UserLogin user);
+        public Task<EmployeeModel> GetEmployee(string email);
+        public Task<Users> GetUser(string email);
+        public Task<List<Users>> GetAllUsers();
+
+
     }
 }

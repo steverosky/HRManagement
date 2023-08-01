@@ -1,17 +1,16 @@
-global using HR_Management.Models;
-global using Microsoft.EntityFrameworkCore;
 global using HR_Management.Models.DBModels;
-global using Microsoft.AspNetCore.Authentication.JwtBearer;
-global using Microsoft.IdentityModel.Tokens;
-global using Serilog;
 global using HR_Management.Models.RequestModels;
 global using HR_Management.Models.ResponseModels;
 global using HR_Management.Services;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.Mvc;
-global using System.Text;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.IdentityModel.Tokens;
 global using Microsoft.OpenApi.Models;
+global using Serilog;
+global using System.Text;
 using Swashbuckle.AspNetCore.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,12 +21,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<DataContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-//add CORS policy
-builder.Services.AddCors(options =>
-    options.AddPolicy("AllowAll", p => p.AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader()));
+var key = Encoding.UTF8.GetBytes(builder.Configuration["JwtConfig:Secret"]!);
 
+var tokenValidationParameters = new TokenValidationParameters
+{
+    ValidateIssuerSigningKey = true,
+    IssuerSigningKey = new SymmetricSecurityKey(key),
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidAudience = builder.Configuration["JwtConfig:Audience"],
+    ValidIssuer = builder.Configuration["JwtConfig:Issuer"],
+    ValidateLifetime = true,
+    ClockSkew = TimeSpan.Zero
+
+};
 
 //add jwt authentication services to program
 builder.Services.AddAuthentication(options =>
@@ -38,38 +45,38 @@ builder.Services.AddAuthentication(options =>
 })
 .AddCookie(options =>
 {
-    options.Cookie.Name = "token";
+    options.Cookie.Name = "AccessToken";
 })
 .AddJwtBearer(jwt =>
 {
-    var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtConfig:Secret"]!);
+
     jwt.SaveToken = true;
     jwt.RequireHttpsMetadata = false;
-    jwt.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["JwtConfig:Audience"],
-        ValidIssuer = builder.Configuration["JwtConfig:Issuer"],
-        ValidateLifetime = true,
-
-    };
+    jwt.TokenValidationParameters = tokenValidationParameters;
 
     jwt.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
-            context.Token = context.Request.Cookies["token"];
+            context.Token = context.Request.Cookies["AccessToken"];
             return Task.CompletedTask;
         }
     };
 
 });
 
+
 builder.Services.AddScoped<IDBServices, DBServices>();
 builder.Services.AddTransient<IFileService, FileService>();
+
+builder.Services.AddHttpClient();
+
+//add CORS policy
+builder.Services.AddCors(options =>
+    options.AddPolicy("AllowAll", p => p.AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader()));
+
 
 //AutoMapper
 builder.Services.AddAutoMapper(typeof(Program));
@@ -109,10 +116,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseSerilogRequestLogging();
+app.UseCors("AllowAll");
+
 
 app.UseAuthorization();
 app.UseAuthentication();
-app.UseCors("AllowAll");
 
 app.MapControllers();
 

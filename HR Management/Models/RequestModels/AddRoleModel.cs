@@ -5,6 +5,6 @@
         //public string? RoleId { get; set; }
         public required string RoleName { get; set; }
         public required string RoleDescription { get; set; }
-        public List<Permissions>? Permissions { get; set; }
+       // public List<Permissions>? Permissions { get; set; }
     }
 }
